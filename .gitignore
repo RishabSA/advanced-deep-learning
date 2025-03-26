@@ -1,6 +1,4 @@
 *.pt
 *.pth
-*.png
-*.jpg
-*.jpeg
+/diffusion/CelebA Latent Diffusion/Unconditioned/celebhq
 *.zip
