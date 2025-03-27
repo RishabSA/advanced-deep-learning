@@ -1,4 +1,5 @@
 *.pt
 *.pth
-/diffusion/CelebA Latent Diffusion/Unconditioned/celebhq
 *.zip
+/diffusion/Latent Diffusion/Unconditioned/celebhq
+/diffusion/Latent Diffusion/Conditioned/mnist
