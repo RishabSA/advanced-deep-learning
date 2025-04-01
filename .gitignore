@@ -1,5 +1,10 @@
 *.pt
 *.pth
 *.zip
-/diffusion/Latent Diffusion/Unconditioned/celebhq
-/diffusion/Latent Diffusion/Conditioned/mnist
+*.pyc
+*.ckpt
+/diffusion/Latent Diffusion/Unconditioned/CelebA/celebhq/diffusion_samples
+/diffusion/Latent Diffusion/Unconditioned/CelebA/celebhq/vqvae_autoencoder_samples
+/diffusion/Latent Diffusion/Conditioned/MNIST/mnist/samples
+/diffusion/Latent Diffusion/Conditioned/MNIST/mnist/vqvae_autoencoder_samples
+/diffusion/Latent Diffusion/Conditioned/CelebA/celebhq/
