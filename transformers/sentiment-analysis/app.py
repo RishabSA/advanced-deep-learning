@@ -35,22 +35,18 @@ def predict_sentiment(text):
 
 
 css_str = """
-body { 
-    background-color: #f7f7f7; 
-}
+    .title { 
+        font-size: 48px; 
+        font-weight: bold; 
+        text-align: center; 
+        margin-top: 20px; 
+    }
 
-.title { 
-    font-size: 48px; 
-    font-weight: bold; 
-    text-align: center; 
-    margin-top: 20px; 
-}
-
-.description { 
-    font-size: 20px; 
-    text-align: center; 
-    argin-bottom: 40px; 
-}
+    .description { 
+        font-size: 20px; 
+        text-align: center; 
+        argin-bottom: 40px; 
+    }
 """
 
 with gr.Blocks(css=css_str) as demo:
