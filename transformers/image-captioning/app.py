@@ -63,7 +63,7 @@ def predict(image: Image.Image):
     return caption
 
 
-with gr.Blocks(css=".block-title { font-size: 24px; font-weight: bold; }") as demo:
+with gr.Blocks(css=".block-title { font-size: 48px; font-weight: bold; }") as demo:
     gr.Markdown("<div class='block-title'>Image Captioning with PyTorch</div>")
     gr.Markdown("Upload an image and get a descriptive caption about the image:")
 
