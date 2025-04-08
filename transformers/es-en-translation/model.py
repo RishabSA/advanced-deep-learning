@@ -623,5 +623,6 @@ def translate_sentence(
         if pred_token == vocab_trg.stoi["<eos>"]:
             break
         trg_indexes.append(pred_token)
-    trg_tokens = vocab_trg.lookup_tokens(trg_indexes)
+
+    trg_tokens = vocab_trg.lookup_tokens(trg_indexes[1:])
     return " ".join(trg_tokens)

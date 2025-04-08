@@ -1,8 +1,4 @@
 torch
 spacy
 gradio
-datasets
 nltk
-tqdm
-matplotlib
-numpy

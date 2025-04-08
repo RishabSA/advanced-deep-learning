@@ -3,7 +3,9 @@ import torch
 import spacy
 import gradio as gr
 from model import make_model, translate_sentence, Vocab
+import __main__
 
+__main__.Vocab = Vocab
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
@@ -25,7 +27,8 @@ def load_tokenizers():
 spacy_es, spacy_en = load_tokenizers()
 
 if os.path.exists("vocab.pt"):
-    vocab_src, vocab_trg = torch.load("vocab.pt")
+    torch.serialization.add_safe_globals([__main__.Vocab])
+    vocab_src, vocab_trg = torch.load("vocab.pt", weights_only=False)
 else:
     raise FileNotFoundError(
         "vocab.pt not found. Please build and save the vocabularies first."
@@ -37,7 +40,7 @@ model = make_model(
     vocab_trg,
     n_layers=3,
     d_model=512,
-    d_ffn=2048,
+    d_ffn=512,
     n_heads=8,
     dropout=0.1,
     max_length=50,
