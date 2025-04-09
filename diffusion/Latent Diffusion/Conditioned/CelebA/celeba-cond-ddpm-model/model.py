@@ -34,7 +34,7 @@ ldm_params = {
     "down_channels": [256, 384, 512, 768],
     "mid_channels": [768, 512],
     "down_sample": [True, True, True],
-    "attn_down": [True, True, True],  # Attention in the DownBlock and UpBlock of VQ-VAE
+    "attn_down": [True, True, True],  # Attention in Down/Up blocks for diffusion
     "time_emb_dim": 512,
     "norm_channels": 32,
     "num_heads": 16,
@@ -45,17 +45,17 @@ ldm_params = {
     "condition_config": {
         "condition_types": ["text", "image"],
         "text_condition_config": {
-            "text_embed_model": "clip",
+            "text_embed_model": "clip",  # or "bert"
             "train_text_embed_model": False,
-            "text_embed_dim": 512,  # Each token should map to text_embed_dim sized vector
-            "cond_drop_prob": 0.1,  # Probability of dropping conditioning during training to allow the model to generate images without conditioning as well
+            "text_embed_dim": 512,
+            "cond_drop_prob": 0.1,
         },
         "image_condition_config": {
-            "image_condition_input_channels": 18,  # CelebA has 18 classes excluding background
+            "image_condition_input_channels": 18,
             "image_condition_output_channels": 3,
-            "image_condition_h": 512,  # Mask height
-            "image_condition_w": 512,  # Mask width
-            "cond_drop_prob": 0.1,  # Probability of dropping conditioning during training to allow the model to generate images without conditioning as well
+            "image_condition_h": 512,
+            "image_condition_w": 512,
+            "cond_drop_prob": 0.1,
         },
     },
 }
@@ -66,11 +66,7 @@ autoencoder_params = {
     "down_channels": [64, 128, 256, 256],
     "mid_channels": [256, 256],
     "down_sample": [True, True, True],
-    "attn_down": [
-        False,
-        False,
-        False,
-    ],  # No attention in the DownBlock and UpBlock of VQ-VAE
+    "attn_down": [False, False, False],
     "norm_channels": 32,
     "num_heads": 4,
     "num_down_layers": 2,
@@ -79,29 +75,13 @@ autoencoder_params = {
 }
 
 train_params = {
-    "seed": 1111,
-    "task_name": "celebhq",  # Folder to save models and images to
-    "ldm_batch_size": 16,
-    "autoencoder_batch_size": 4,
-    "disc_start": 15000,
-    "disc_weight": 0.5,
-    "codebook_weight": 1,
-    "commitment_beta": 0.2,
-    "perceptual_weight": 1,
-    "kl_weight": 0.000005,
-    "ldm_epochs": 100,
-    "autoencoder_epochs": 20,
+    "task_name": "celebhq",  # Folder name in which model checkpoints are stored
     "num_samples": 1,
     "num_grid_rows": 1,
-    "ldm_lr": 0.000005,
-    "autoencoder_lr": 0.00001,
-    "autoencoder_acc_steps": 4,
-    "autoencoder_img_save_steps": 64,
-    "save_latents": True,
     "cf_guidance_scale": 1.0,
-    "vqvae_latent_dir_name": "vqvae_latents",
     "ldm_ckpt_name": "ddpm_ckpt_class_cond.pth",
     "vqvae_autoencoder_ckpt_name": "vqvae_autoencoder_ckpt.pth",
+    "vqvae_latent_dir_name": "vqvae_latents",
 }
 
 
@@ -1676,12 +1656,7 @@ class UNet(nn.Module):
 
 
 def sample_ddpm_inference(
-    unet,
-    vae,
-    text_prompt,
-    mask_image_pil=None,
-    guidance_scale=1.0,
-    device=torch.device("cpu"),
+    text_prompt, mask_image_pil=None, guidance_scale=1.0, device=torch.device("cpu")
 ):
     """
     Given a text prompt and (optionally) an image condition (as a PIL image),
@@ -1763,28 +1738,28 @@ def sample_ddpm_inference(
         cond_input["image"] = mask_tensor
 
     # Load the diffusion UNet (and assume it has been pretrained and saved)
-    # unet = UNet(
-    #     image_channels=autoencoder_params["z_channels"], model_config=ldm_params
-    # ).to(device)
-    # ldm_checkpoint_path = os.path.join(
-    #     train_params["task_name"], train_params["ldm_ckpt_name"]
-    # )
-    # if os.path.exists(ldm_checkpoint_path):
-    #     checkpoint = torch.load(ldm_checkpoint_path, map_location=device)
-    #     unet.load_state_dict(checkpoint["model_state_dict"])
-    # unet.eval()
+    unet = UNet(
+        image_channels=autoencoder_params["z_channels"], model_config=ldm_params
+    ).to(device)
+    ldm_checkpoint_path = os.path.join(
+        train_params["task_name"], train_params["ldm_ckpt_name"]
+    )
+    if os.path.exists(ldm_checkpoint_path):
+        checkpoint = torch.load(ldm_checkpoint_path, map_location=device)
+        unet.load_state_dict(checkpoint["model_state_dict"])
+    unet.eval()
 
     # Load VQVAE (assume pretrained and saved)
-    # vae = VQVAE(
-    #     image_channels=dataset_params["image_channels"], model_config=autoencoder_params
-    # ).to(device)
-    # vae_checkpoint_path = os.path.join(
-    #     train_params["task_name"], train_params["vqvae_autoencoder_ckpt_name"]
-    # )
-    # if os.path.exists(vae_checkpoint_path):
-    #     checkpoint = torch.load(vae_checkpoint_path, map_location=device)
-    #     vae.load_state_dict(checkpoint["model_state_dict"])
-    # vae.eval()
+    vae = VQVAE(
+        image_channels=dataset_params["image_channels"], model_config=autoencoder_params
+    ).to(device)
+    vae_checkpoint_path = os.path.join(
+        train_params["task_name"], train_params["vqvae_autoencoder_ckpt_name"]
+    )
+    if os.path.exists(vae_checkpoint_path):
+        checkpoint = torch.load(vae_checkpoint_path, map_location=device)
+        vae.load_state_dict(checkpoint["model_state_dict"])
+    vae.eval()
 
     # Determine latent shape from VQVAE: (batch, z_channels, H_lat, W_lat)
     # For example, if image_size is 256 and there are 3 downsamplings, H_lat = 256 // 8 = 32.
@@ -1812,12 +1787,11 @@ def sample_ddpm_inference(
             noise_pred = noise_pred_cond
         xt, _ = scheduler.sample_prev_timestep(xt, noise_pred, t)
 
-        with torch.no_grad():
-            generated = vae.decode(xt)
-
-        generated = torch.clamp(generated, -1, 1)
-        generated = (generated + 1) / 2  # scale to [0,1]
-        grid = make_grid(generated, nrow=1)
-        pil_img = transforms.ToPILImage()(grid.cpu())
-
-        yield pil_img
+    # Finally, decode the final latent using the VQVAE decoder
+    with torch.no_grad():
+        generated = vae.decode(xt)
+    generated = torch.clamp(generated, -1, 1)
+    generated = (generated + 1) / 2  # scale to [0,1]
+    grid = make_grid(generated, nrow=1)
+    pil_img = transforms.ToPILImage()(grid.cpu())
+    return pil_img

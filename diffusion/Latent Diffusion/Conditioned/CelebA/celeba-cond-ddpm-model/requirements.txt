@@ -1,0 +1,7 @@
+torch
+torchvision
+transformers
+gradio>=3.16
+spacy
+datasets
+Pillow
