@@ -55,11 +55,13 @@ vae.eval()
 print("Model and checkpoints loaded successfully!")
 
 
-def sample_ddpm_inference(text_prompt, mask_image_pil):
+def sample_ddpm_inference(text_prompt):
     """
     Given a text prompt and (optionally) an image condition (as a PIL image),
     sample from the diffusion model and return a generated image (PIL image).
     """
+
+    mask_image_pil = None
     guidance_scale = 1.0
 
     # Create noise scheduler
@@ -199,14 +201,13 @@ with gr.Blocks(css=css_str) as demo:
             lines=2,
             placeholder="E.g., 'He is a man with brown hair.'",
         )
-        mask_input = gr.Image(type="pil", label="Optional Mask for Conditioning")
 
     generate_button = gr.Button("Generate Image")
     output_image = gr.Image(label="Generated Image", type="pil")
 
     generate_button.click(
         fn=sample_ddpm_inference,
-        inputs=[text_input, mask_input],
+        inputs=[text_input],
         outputs=[output_image],
     )
 

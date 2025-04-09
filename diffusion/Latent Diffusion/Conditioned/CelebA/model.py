@@ -1820,4 +1820,5 @@ def sample_ddpm_inference(
         grid = make_grid(generated, nrow=1)
         pil_img = transforms.ToPILImage()(grid.cpu())
 
-        yield pil_img
+        if i % 10 == 0:
+            yield pil_img
