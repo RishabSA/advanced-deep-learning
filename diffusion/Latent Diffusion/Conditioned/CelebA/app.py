@@ -15,6 +15,7 @@ from model import (
     train_params,
 )
 from huggingface_hub import hf_hub_download
+import spaces
 import json
 
 
@@ -22,6 +23,8 @@ print("Gradio version:", gr.__version__)
 
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+print(f"Currently running on {device}")
+print(f"CUDA device: {torch.cuda.get_device_name(torch.cuda.current_device())}")
 
 # Download config and checkpoint files from HF Hub
 config_path = hf_hub_download(
@@ -55,6 +58,7 @@ vae.eval()
 print("Model and checkpoints loaded successfully!")
 
 
+@spaces.GPU
 def sample_ddpm_inference(text_prompt):
     """
     Given a text prompt and (optionally) an image condition (as a PIL image),
@@ -154,26 +158,29 @@ def sample_ddpm_inference(text_prompt):
     T = diffusion_params["num_timesteps"]
     for i in reversed(range(T)):
         t = torch.full((batch,), i, dtype=torch.long, device=device)
-        # Get conditional noise prediction
-        noise_pred_cond = unet(xt, t, cond_input)
-        if guidance_scale > 1:
-            noise_pred_uncond = unet(xt, t, uncond_input)
-            noise_pred = noise_pred_uncond + guidance_scale * (
-                noise_pred_cond - noise_pred_uncond
-            )
-        else:
-            noise_pred = noise_pred_cond
-        xt, _ = scheduler.sample_prev_timestep(xt, noise_pred, t)
 
         with torch.no_grad():
-            generated = vae.decode(xt)
+            # Get conditional noise prediction
+            noise_pred_cond = unet(xt, t, cond_input)
+            if guidance_scale > 1:
+                noise_pred_uncond = unet(xt, t, uncond_input)
+                noise_pred = noise_pred_uncond + guidance_scale * (
+                    noise_pred_cond - noise_pred_uncond
+                )
+            else:
+                noise_pred = noise_pred_cond
+            xt, _ = scheduler.sample_prev_timestep(xt, noise_pred, t)
 
-        generated = torch.clamp(generated, -1, 1)
-        generated = (generated + 1) / 2  # scale to [0,1]
-        grid = make_grid(generated, nrow=1)
-        pil_img = transforms.ToPILImage()(grid.cpu())
+            if i % 20 == 0 or i == 0:
+                # Decode current latent into image
+                generated = vae.decode(xt)
 
-        yield pil_img
+                generated = torch.clamp(generated, -1, 1)
+                generated = (generated + 1) / 2  # scale to [0,1]
+                grid = make_grid(generated, nrow=1)
+                pil_img = transforms.ToPILImage()(grid.cpu())
+
+                yield pil_img
 
 
 css_str = """
