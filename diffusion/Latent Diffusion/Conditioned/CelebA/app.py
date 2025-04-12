@@ -48,6 +48,7 @@ vae = VQVAE(
 
 unet_state = torch.load(ldm_ckpt_path, map_location=device)
 unet.load_state_dict(unet_state["model_state_dict"])
+print(unet_state["epoch"])
 
 vae_state = torch.load(vae_ckpt_path, map_location=device)
 vae.load_state_dict(vae_state["model_state_dict"])
@@ -66,7 +67,8 @@ def sample_ddpm_inference(text_prompt):
     """
 
     mask_image_pil = None
-    guidance_scale = 1.0
+    guidance_scale = 2.0
+    image_display_rate = 1
 
     # Create noise scheduler
     scheduler = LinearNoiseScheduler(
@@ -171,7 +173,7 @@ def sample_ddpm_inference(text_prompt):
                 noise_pred = noise_pred_cond
             xt, _ = scheduler.sample_prev_timestep(xt, noise_pred, t)
 
-            if i % 20 == 0 or i == 0:
+            if i % image_display_rate == 0 or i == 0:
                 # Decode current latent into image
                 generated = vae.decode(xt)
 
