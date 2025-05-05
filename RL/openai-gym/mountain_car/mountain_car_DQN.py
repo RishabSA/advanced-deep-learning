@@ -18,8 +18,8 @@ TARGET_UPDATE = 5  # How often to sync target and policy network parameters
 LR = 5e-4
 NUM_EPISODES = 1000  # Training episodes
 MEMORY_CAPACITY = 10000  # Memory Replay Buffer Capacity
-EPISODE_STEP_LIMIT = 50000  # After how many steps to end episode early
-MODEL_PATH = "dqn_cartpole.pth"
+EPISODE_STEP_LIMIT = 200  # After how many steps to end episode early
+MODEL_PATH = "dqn_mountain_car.pth"
 SHOULD_TRAIN = True
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -111,19 +111,16 @@ def optimize_model(memory, policy, target_net, optimizer):
     reward_batch = torch.cat(batch.reward)
 
     # Compute Q(s_t, a) with the policy network for the actions taken
-    # Compute Q-values of every state for all actions (shape: (batch_size, n_actions))
-    # Select the Q-value corresponding to each sample’s taken action, yielding a (BATCH_SIZE) tensor.
-    state_action_values = policy(state_batch).gather(1, action_batch).view(-1)
+    # Compute Q-values of every state for all actions (shape: (batch_size, n_actions)), then select the Q-value corresponding to each sample’s taken action, yielding a (batch_size, 1) tensor.
+    state_action_values = policy(state_batch).gather(1, action_batch)
 
     # Compute V(s_{t+1}) for non-final states using the target network
     next_state_values = torch.zeros(BATCH_SIZE, device=device)
 
     # Feeds all non-final next states through the target network and takes the maximum Q-value over actions for each
     next_state_values[non_final_mask] = (
-        target_net(non_final_next_states)
-        .max(1)[0]
-        .detach()  #  shape of nonfinal: (n_nonfinal, n_actions) -> (n_nonfinal)
-    )  # (batch_size)
+        target_net(non_final_next_states).max(1)[0].detach()
+    )
 
     # Compute expected Q values via Bellman equation
     # r + γQ^\pi(s^{\prime},\pi(s^{\prime}))
@@ -132,12 +129,10 @@ def optimize_model(memory, policy, target_net, optimizer):
     # By adding $r$ to $\gamma \max_{a^{\prime}} Q(s^{\prime},a)$, we form a one-step “ground truth” that the policy net should move toward.
 
     # Discount factor and add observed reward to get "optimal" decision
-    expected_state_action_values = (
-        next_state_values * GAMMA
-    ) + reward_batch  # Shape: (BATCH_SIZE)
+    expected_state_action_values = (next_state_values * GAMMA) + reward_batch
 
     # Huber loss between policy network’s predicted Q-values and target network's Q-values
-    loss = F.smooth_l1_loss(state_action_values, expected_state_action_values)
+    loss = F.smooth_l1_loss(state_action_values.view(-1), expected_state_action_values)
     optimizer.zero_grad()
     loss.backward()
 
@@ -149,9 +144,11 @@ def optimize_model(memory, policy, target_net, optimizer):
 
 
 def main():
-    env = gym.make("CartPole-v1")
-    n_states = env.observation_space.shape[0]  # 4 state values
-    n_actions = env.action_space.n  # 2: Left and Right
+    env = gym.make("MountainCar-v0")
+    n_states = env.observation_space.shape[0]  # 2 state values: position and velocity
+    n_actions = (
+        env.action_space.n
+    )  # 3: Accelerate left no acceleration, accelerate right
 
     policy = DQN(n_states, n_actions).to(device)
     target_net = DQN(n_states, n_actions).to(device)
@@ -205,9 +202,7 @@ def main():
             if i_episode % TARGET_UPDATE == 0:
                 target_net.load_state_dict(policy.state_dict())
 
-            print(
-                f"Episode {i_episode}\tDuration: {episode_durations[-1]}  Total reward: {total_reward:.2f}"
-            )
+            print(f"Episode {i_episode} Total reward: {total_reward:.2f}")
 
         torch.save(policy.state_dict(), MODEL_PATH)
 
@@ -222,7 +217,7 @@ def main():
         plt.show()
 
     # Test the trained agent
-    test_env = gym.make("CartPole-v1", render_mode="human")
+    test_env = gym.make("MountainCar-v0", render_mode="human")
     for i in range(3):
         obs = test_env.reset()[0]
         state = torch.tensor([obs], dtype=torch.float32, device=device)
