@@ -9,13 +9,13 @@ import torch.optim as optim
 import torch.nn.functional as F
 import os
 
-BATCH_SIZE = 64  # Number of experiences (current state, action, reward, next state) to sample per training step
+BATCH_SIZE = 128  # Number of experiences (current state, action, reward, next state) to sample per training step
 GAMMA = 0.99  # Discount factor
-EPS_START = 0.9  # Epsilon for epsilon-greedy
-EPS_END = 0.05
+EPS_START = 1.0  # Epsilon for epsilon-greedy
+EPS_END = 0.01
 EPS_DECAY = 2000
-TARGET_UPDATE = 5  # How often to sync target and policy network parameters
-LR = 5e-4
+TARGET_UPDATE = 10  # How often to sync target and policy network parameters
+LR = 1e-3
 NUM_EPISODES = 1000  # Training episodes
 MEMORY_CAPACITY = 10000  # Memory Replay Buffer Capacity
 EPISODE_STEP_LIMIT = 200  # After how many steps to end episode early
@@ -111,28 +111,42 @@ def optimize_model(memory, policy, target_net, optimizer):
     reward_batch = torch.cat(batch.reward)
 
     # Compute Q(s_t, a) with the policy network for the actions taken
-    # Compute Q-values of every state for all actions (shape: (batch_size, n_actions)), then select the Q-value corresponding to each sample’s taken action, yielding a (batch_size, 1) tensor.
-    state_action_values = policy(state_batch).gather(1, action_batch)
+    # Compute Q-values of every state for all actions (shape: (batch_size, n_actions))
+    # Select the Q-value corresponding to each sample’s taken action, yielding a (BATCH_SIZE) tensor.
+    state_action_values = policy(state_batch).gather(1, action_batch).view(-1)
 
     # Compute V(s_{t+1}) for non-final states using the target network
     next_state_values = torch.zeros(BATCH_SIZE, device=device)
 
     # Feeds all non-final next states through the target network and takes the maximum Q-value over actions for each
     next_state_values[non_final_mask] = (
-        target_net(non_final_next_states).max(1)[0].detach()
-    )
+        target_net(non_final_next_states)
+        .max(1)[0]
+        .detach()  #  shape of nonfinal: (n_nonfinal, n_actions) -> (n_nonfinal)
+    )  # (batch_size)
 
     # Compute expected Q values via Bellman equation
-    # r + γQ^\pi(s^{\prime},\pi(s^{\prime}))
+    # Q(s,a) = r+\gamma \max_{a^{\prime}}Q(s^{\prime},a^{\prime})
+
+    # The Ellman equation finds the optimal action‐value function by telling us that the true $Q(s,a)$ must equal
+    # the immediate reward plus the discounted best future value. This essentially breaks the long‐term return into an
+    # immediate reward plus an estimate of future value.
+
+    # We don’t know $Q$ ahead of time, so we approximate that right-hand side by plugging in our target network’s current
+    # estimate of $\max_{a’}Q(s’,a’)$.  Training the policy net to match $r + \gamma\,\max_{a’}Q_{\rm target}(s’,a’)$
+    # therefore nudges it toward satisfying the Bellman equation—and thus toward the optimal Q-function—while the
+    # delayed target network provides stability.
 
     # We use the **next state** $s^{\prime}$ because of the Bellman equation: the true value of (s,a) is the immediate reward r plus the discounted value of the *best* next action in $s^{\prime}$.
     # By adding $r$ to $\gamma \max_{a^{\prime}} Q(s^{\prime},a)$, we form a one-step “ground truth” that the policy net should move toward.
 
-    # Discount factor and add observed reward to get "optimal" decision
-    expected_state_action_values = (next_state_values * GAMMA) + reward_batch
+    # Use the bellman equation to get the expected Q values for current and future states given the next_state and current reward
+    expected_state_action_values = (
+        next_state_values * GAMMA
+    ) + reward_batch  # Shape: (BATCH_SIZE)
 
     # Huber loss between policy network’s predicted Q-values and target network's Q-values
-    loss = F.smooth_l1_loss(state_action_values.view(-1), expected_state_action_values)
+    loss = F.smooth_l1_loss(state_action_values, expected_state_action_values)
     optimizer.zero_grad()
     loss.backward()
 
@@ -145,10 +159,8 @@ def optimize_model(memory, policy, target_net, optimizer):
 
 def main():
     env = gym.make("MountainCar-v0")
-    n_states = env.observation_space.shape[0]  # 2 state values: position and velocity
-    n_actions = (
-        env.action_space.n
-    )  # 3: Accelerate left no acceleration, accelerate right
+    n_states = env.observation_space.shape[0]  # 2 state values
+    n_actions = env.action_space.n  # 3: Left,  Right, Stationary
 
     policy = DQN(n_states, n_actions).to(device)
     target_net = DQN(n_states, n_actions).to(device)
@@ -172,7 +184,7 @@ def main():
             state = torch.tensor([obs], dtype=torch.float32, device=device)
             total_reward = 0
 
-            for t in range(1, EPISODE_STEP_LIMIT):  # Limit steps per episode
+            for t in range(1, EPISODE_STEP_LIMIT + 1):  # Limit steps per episode
                 action = select_action(state, policy, n_actions)
                 # step the environment
                 result = env.step(action.item())
@@ -202,7 +214,9 @@ def main():
             if i_episode % TARGET_UPDATE == 0:
                 target_net.load_state_dict(policy.state_dict())
 
-            print(f"Episode {i_episode} Total reward: {total_reward:.2f}")
+            print(
+                f"Episode {i_episode}\tDuration: {episode_durations[-1]}  Total reward: {total_reward:.2f}"
+            )
 
         torch.save(policy.state_dict(), MODEL_PATH)
 
@@ -221,7 +235,7 @@ def main():
     for i in range(3):
         obs = test_env.reset()[0]
         state = torch.tensor([obs], dtype=torch.float32, device=device)
-        for t in range(1, EPISODE_STEP_LIMIT):
+        for t in range(1, EPISODE_STEP_LIMIT + 1):
             # pick best action (no exploration)
             action = policy(state).argmax(dim=1).view(1, 1)
             result = test_env.step(action.item())
