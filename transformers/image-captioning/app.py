@@ -5,6 +5,32 @@ import gradio as gr
 from transformers import AutoTokenizer
 from model import CaptioningTransformer
 
+css_str = """
+body {
+    background-color: #121212;
+    color: #e0e0e0;
+    font-family: Arial, sans-serif;
+}
+
+.container {
+    max-width: 700px;
+    margin: 15px auto;
+}
+
+h1 {
+    font-size: 36px;
+    font-weight: bold;
+    text-align: center;
+    color: #ffffff;
+}
+
+.description {
+    font-size: 18px;
+    text-align: center;
+    color: #b0b0b0;
+}
+"""
+
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 image_size = 128
 patch_size = 8
@@ -63,9 +89,12 @@ def predict(image: Image.Image):
     return caption
 
 
-with gr.Blocks(css=".block-title { font-size: 48px; font-weight: bold; }") as demo:
-    gr.Markdown("<div class='block-title'>Image Captioning with PyTorch</div>")
-    gr.Markdown("Upload an image and get a descriptive caption about the image:")
+with gr.Blocks(css=css_str) as demo:
+    gr.HTML("<div class='container'>")
+    gr.Markdown("<h1>Image Captioning</h1>")
+    gr.Markdown(
+        "<div class='description'>Upload an image and get a descriptive caption about the image:</div>"
+    )
 
     with gr.Row():
         with gr.Column():
@@ -78,6 +107,7 @@ with gr.Blocks(css=".block-title { font-size: 48px; font-weight: bold; }") as de
             )
 
     generate_button.click(fn=predict, inputs=image_input, outputs=caption_output)
+    gr.HTML("</div>")
 
 if __name__ == "__main__":
     demo.launch(share=True)

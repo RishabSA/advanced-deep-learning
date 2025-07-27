@@ -64,21 +64,33 @@ def translate(text):
 
 
 css_str = """
-    .title {
-        font-size: 48px;
-        font-weight: bold;
-        text-align: center;
-        margin-bottom: 20px;
-    }
-    .description {
-        font-size: 20px;
-        text-align: center;
-        margin-bottom: 40px;
-    }
+body {
+    background-color: #121212;
+    color: #e0e0e0;
+}
+
+.container {
+    max-width: 700px;
+    margin: 10px auto;
+}
+
+h1 {
+    font-size: 36px;
+    font-weight: bold;
+    text-align: center;
+    color: #ffffff;
+}
+
+.description {
+    font-size: 18px;
+    text-align: center;
+    color: #b0b0b0;
+}
 """
 
 with gr.Blocks(css=css_str) as demo:
-    gr.Markdown("<div class='title'>Spanish-to-English Translator</div>")
+    gr.HTML("<div class='container'>")
+    gr.Markdown("<h1>Spanish-to-English Translator</h1>")
     gr.Markdown(
         "<div class='description'>Enter a Spanish sentence below to receive its English translation.</div>"
     )
@@ -89,6 +101,7 @@ with gr.Blocks(css=css_str) as demo:
     translate_btn = gr.Button("Translate")
     txt_output = gr.Textbox(label="English Translation", lines=2)
     translate_btn.click(fn=translate, inputs=txt_input, outputs=txt_output)
+    gr.HTML("</div>")
 
 if __name__ == "__main__":
     demo.launch(share=True)

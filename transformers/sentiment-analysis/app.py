@@ -1,9 +1,11 @@
 import os
 import time
-import torch
+
 import gradio as gr
+import torch
 from transformers import AutoTokenizer
-from model import make_model, get_sentiment
+
+from model import get_sentiment, make_model
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -35,22 +37,33 @@ def predict_sentiment(text):
 
 
 css_str = """
-    .title { 
-        font-size: 48px; 
-        font-weight: bold; 
-        text-align: center; 
-        margin-top: 20px; 
-    }
+body {
+    background-color: #121212;
+    color: #e0e0e0;
+}
 
-    .description { 
-        font-size: 20px; 
-        text-align: center; 
-        argin-bottom: 40px; 
-    }
+.container {
+    max-width: 750px;
+    margin: 10px auto;
+}
+
+h1 {
+    font-size: 36px;
+    font-weight: bold;
+    text-align: center;
+    color: #ffffff;
+}
+
+.description {
+    font-size: 18px;
+    text-align: center;
+    color: #b0b0b0;
+}
 """
 
 with gr.Blocks(css=css_str) as demo:
-    gr.Markdown("<div class='title'>Sentiment Diffusion</div>")
+    gr.HTML("<div class='container'>")
+    gr.Markdown("<h1>Sentiment Analysis</h1>")
     gr.Markdown(
         "<div class='description'>Enter a sentence and see the predicted sentiment.</div>"
     )
@@ -60,6 +73,7 @@ with gr.Blocks(css=css_str) as demo:
     predict_btn = gr.Button("Predict Sentiment")
     output_box = gr.Textbox(label="Predicted Sentiment")
     predict_btn.click(fn=predict_sentiment, inputs=text_input, outputs=output_box)
+    gr.HTML("</div>")
 
 if __name__ == "__main__":
     demo.launch(share=True)

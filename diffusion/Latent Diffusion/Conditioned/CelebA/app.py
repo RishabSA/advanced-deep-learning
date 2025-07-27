@@ -24,7 +24,9 @@ print("Gradio version:", gr.__version__)
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(f"Currently running on {device}")
-print(f"CUDA device: {torch.cuda.get_device_name(torch.cuda.current_device())}")
+
+if device.type == "cuda":
+    print(f"CUDA device: {torch.cuda.get_device_name(torch.cuda.current_device())}")
 
 # Download config and checkpoint files from HF Hub
 config_path = hf_hub_download(
@@ -67,8 +69,11 @@ def sample_ddpm_inference(text_prompt):
     """
 
     mask_image_pil = None
-    guidance_scale = 2.0
-    image_display_rate = 1
+
+    # Guidance scale controls the strength of classifier-free guidance
+    guidance_scale = 1.0
+
+    image_display_rate = 10
 
     # Create noise scheduler
     scheduler = LinearNoiseScheduler(
@@ -186,39 +191,56 @@ def sample_ddpm_inference(text_prompt):
 
 
 css_str = """
-.title { 
-    font-size: 48px; 
-    text-align: center; 
-    margin-top: 20px; 
+body {
+    background-color: #121212;
+    color: #e0e0e0;
+    font-family: Arial, sans-serif;
 }
-.description { 
-    font-size: 20px; 
-    text-align: center; 
-    margin-bottom: 40px; 
+
+.container {
+    max-width: 700px;
+    margin: 15px auto;
+}
+
+h1 {
+    font-size: 36px;
+    font-weight: bold;
+    text-align: center;
+    color: #ffffff;
+}
+
+.description {
+    font-size: 16px;
+    text-align: center;
+    color: #b0b0b0;
 }
 """
 
+
 with gr.Blocks(css=css_str) as demo:
-    gr.Markdown("<div class='title'>Conditioned Latent Diffusion with CelebA</div>")
+    gr.HTML("<div class='container'>")
+    gr.Markdown("<h1>Conditioned Latent Diffusion of Faces</h1>")
     gr.Markdown(
-        "<div class='description'>Enter a text prompt and (optionally) upload a mask image for conditioning; the generated image will update as the reverse diffusion progresses.</div>"
+        "<div class='description'>Enter a text prompt and watch the reverse diffusion process as the image is denoised and generates an image of a face.</div>"
     )
 
     with gr.Row():
-        text_input = gr.Textbox(
-            label="Text Prompt",
-            lines=2,
-            placeholder="E.g., 'He is a man with brown hair.'",
-        )
-
-    generate_button = gr.Button("Generate Image")
-    output_image = gr.Image(label="Generated Image", type="pil")
+        with gr.Column():
+            text_input = gr.Textbox(
+                label="Text Prompt",
+                placeholder="E.g., 'He is a man with brown hair.'",
+            )
+            generate_button = gr.Button("Generate Image")
+        with gr.Column():
+            output_image = gr.Image(label="Generated Image", type="pil")
 
     generate_button.click(
         fn=sample_ddpm_inference,
         inputs=[text_input],
         outputs=[output_image],
     )
+
+    gr.HTML("</div>")
 
 if __name__ == "__main__":
     demo.launch(share=True)
