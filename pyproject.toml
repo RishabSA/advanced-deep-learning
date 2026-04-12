@@ -1,0 +1,18 @@
+[project]
+name = "advanced-deep-learning"
+version = "0.1.0"
+description = "Projects that I have built for learning the math and intuition behind several different deep learning concepts in PyTorch. The projects in this learning repo include CNNs, RNNs, LSTMs, Autoencoders, VAEs, VQ-VAEs, GANs, Faster R-CNN, YOLO-V1, SSD, Transformers, Vision Transformers, Latent Diffusion, Conditioned Latent Diffusion, LoRA, reinforcement learning, and more."
+readme = "README.md"
+requires-python = ">=3.14.3"
+dependencies = [
+    "datasets>=4.8.4",
+    "matplotlib>=3.10.8",
+    "numpy>=2.4.4",
+    "pandas>=3.0.2",
+    "scikit-learn>=1.8.0",
+    "torch>=2.11.0",
+    "torch-geometric>=2.7.0",
+    "torchvision>=0.26.0",
+    "tqdm>=4.67.3",
+    "transformers>=5.5.3",
+]
